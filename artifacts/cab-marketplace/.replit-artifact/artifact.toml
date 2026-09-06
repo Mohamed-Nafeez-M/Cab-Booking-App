@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Cab Marketplace"
+description = "A local-first cab service marketplace connecting customers with providers through searchable listings, quote requests, provider operations, and admin oversight."
+version = "1.0.0"
+id = "artifacts/cab-marketplace"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 24797
+
+[services.development]
+run = "pnpm --filter @workspace/cab-marketplace run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/cab-marketplace", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/cab-marketplace/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "24797"
+BASE_PATH = "/"
