@@ -598,6 +598,45 @@ components:
           type: string
           minLength: 4
           description: Aadhar/KYC ID proof. Required when role is CUSTOMER.
+        companyName:
+          type: string
+          description: Company name for provider.
+        companyRegistrationNumber:
+          type: string
+          description: Unique company registration number.
+        gstNumber:
+          type: string
+          description: 15-character GST identification number.
+        companyAddress:
+          type: string
+          description: Registered company address.
+        city:
+          type: string
+          description: Company city.
+        state:
+          type: string
+          description: Company state.
+        pincode:
+          type: string
+          description: 6-digit postal pincode.
+        ownerName:
+          type: string
+          description: Owner full name.
+        ownerEmail:
+          type: string
+          description: Owner email address.
+        ownerPhone:
+          type: string
+          description: Owner phone number.
+        ownerDob:
+          type: string
+          description: Owner date of birth.
+        kycType:
+          type: string
+          description: KYC ID type (Aadhaar, PAN, Other).
+        kycNumber:
+          type: string
+          description: KYC ID number.
     LoginInput:
       type: object
       required: [email, password]
@@ -633,8 +672,19 @@ components:
           properties:
             providerId: { type: string }
             companyName: { type: ["string", "null"] }
+            companyRegistrationNumber: { type: ["string", "null"] }
+            gstNumber: { type: ["string", "null"] }
             description: { type: ["string", "null"] }
             address: { type: ["string", "null"] }
+            city: { type: ["string", "null"] }
+            state: { type: ["string", "null"] }
+            pincode: { type: ["string", "null"] }
+            ownerName: { type: ["string", "null"] }
+            ownerEmail: { type: ["string", "null"] }
+            ownerPhone: { type: ["string", "null"] }
+            ownerDob: { type: ["string", "null"] }
+            kycType: { type: ["string", "null"] }
+            kycNumber: { type: ["string", "null"] }
             rating: { type: number }
     ProviderProfileInput:
       type: object

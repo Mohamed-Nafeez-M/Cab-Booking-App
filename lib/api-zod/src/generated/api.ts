@@ -35,7 +35,20 @@ export const RegisterBody = zod.object({
   "phone": zod.string().min(registerBodyPhoneMin),
   "password": zod.string().min(registerBodyPasswordMin),
   "role": zod.enum(['CUSTOMER', 'PROVIDER']),
-  "aadharId": zod.string().min(registerBodyAadharIdMin).optional().describe('Aadhar\/KYC ID proof. Required when role is CUSTOMER.')
+  "aadharId": zod.string().min(registerBodyAadharIdMin).optional().describe('Aadhar\/KYC ID proof. Required when role is CUSTOMER.'),
+  "companyName": zod.string().optional().describe('Company name for provider.'),
+  "companyRegistrationNumber": zod.string().optional().describe('Unique company registration number.'),
+  "gstNumber": zod.string().optional().describe('15-character GST identification number.'),
+  "companyAddress": zod.string().optional().describe('Registered company address.'),
+  "city": zod.string().optional().describe('Company city.'),
+  "state": zod.string().optional().describe('Company state.'),
+  "pincode": zod.string().optional().describe('6-digit postal pincode.'),
+  "ownerName": zod.string().optional().describe('Owner full name.'),
+  "ownerEmail": zod.string().optional().describe('Owner email address.'),
+  "ownerPhone": zod.string().optional().describe('Owner phone number.'),
+  "ownerDob": zod.string().optional().describe('Owner date of birth.'),
+  "kycType": zod.string().optional().describe('KYC ID type (Aadhaar, PAN, Other).'),
+  "kycNumber": zod.string().optional().describe('KYC ID number.')
 })
 
 export const RegisterResponse = zod.object({
@@ -142,8 +155,19 @@ export const GetProviderProfileResponse = zod.object({
 }).and(zod.object({
   "providerId": zod.string().optional(),
   "companyName": zod.string().nullish(),
+  "companyRegistrationNumber": zod.string().nullish(),
+  "gstNumber": zod.string().nullish(),
   "description": zod.string().nullish(),
   "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "pincode": zod.string().nullish(),
+  "ownerName": zod.string().nullish(),
+  "ownerEmail": zod.string().nullish(),
+  "ownerPhone": zod.string().nullish(),
+  "ownerDob": zod.string().nullish(),
+  "kycType": zod.string().nullish(),
+  "kycNumber": zod.string().nullish(),
   "rating": zod.number().optional()
 }))
 
@@ -172,8 +196,19 @@ export const UpdateProviderProfileResponse = zod.object({
 }).and(zod.object({
   "providerId": zod.string().optional(),
   "companyName": zod.string().nullish(),
+  "companyRegistrationNumber": zod.string().nullish(),
+  "gstNumber": zod.string().nullish(),
   "description": zod.string().nullish(),
   "address": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "state": zod.string().nullish(),
+  "pincode": zod.string().nullish(),
+  "ownerName": zod.string().nullish(),
+  "ownerEmail": zod.string().nullish(),
+  "ownerPhone": zod.string().nullish(),
+  "ownerDob": zod.string().nullish(),
+  "kycType": zod.string().nullish(),
+  "kycNumber": zod.string().nullish(),
   "rating": zod.number().optional()
 }))
 

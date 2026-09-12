@@ -41,10 +41,24 @@ export const providers = pgTable("providers", {
   id: text("id").primaryKey(),
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   companyName: text("company_name"),
+  companyRegistrationNumber: text("company_registration_number"),
+  gstNumber: text("gst_number"),
   description: text("description"),
   address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  pincode: text("pincode"),
+  ownerName: text("owner_name"),
+  ownerEmail: text("owner_email"),
+  ownerPhone: text("owner_phone"),
+  ownerDob: text("owner_dob"),
+  kycType: text("kyc_type"),
+  kycNumber: text("kyc_number"),
   ...timestamps,
-}, (table) => [index("providers_user_idx").on(table.userId)]);
+}, (table) => [
+  index("providers_user_idx").on(table.userId),
+  uniqueIndex("providers_company_reg_idx").on(table.companyRegistrationNumber),
+]);
 
 export const vehicles = pgTable("vehicles", {
   id: text("id").primaryKey(),

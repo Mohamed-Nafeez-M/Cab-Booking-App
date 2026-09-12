@@ -53,6 +53,32 @@ export interface RegisterInput {
      * @minLength 4
      */
   aadharId?: string;
+  /** Company name for provider. */
+  companyName?: string;
+  /** Unique company registration number. */
+  companyRegistrationNumber?: string;
+  /** 15-character GST identification number. */
+  gstNumber?: string;
+  /** Registered company address. */
+  companyAddress?: string;
+  /** Company city. */
+  city?: string;
+  /** Company state. */
+  state?: string;
+  /** 6-digit postal pincode. */
+  pincode?: string;
+  /** Owner full name. */
+  ownerName?: string;
+  /** Owner email address. */
+  ownerEmail?: string;
+  /** Owner phone number. */
+  ownerPhone?: string;
+  /** Owner date of birth. */
+  ownerDob?: string;
+  /** KYC ID type (Aadhaar, PAN, Other). */
+  kycType?: string;
+  /** KYC ID number. */
+  kycNumber?: string;
 }
 
 export interface LoginInput {
@@ -91,9 +117,31 @@ export type ProviderProfile = User & ({
   /** @nullable */
   companyName?: string | null;
   /** @nullable */
+  companyRegistrationNumber?: string | null;
+  /** @nullable */
+  gstNumber?: string | null;
+  /** @nullable */
   description?: string | null;
   /** @nullable */
   address?: string | null;
+  /** @nullable */
+  city?: string | null;
+  /** @nullable */
+  state?: string | null;
+  /** @nullable */
+  pincode?: string | null;
+  /** @nullable */
+  ownerName?: string | null;
+  /** @nullable */
+  ownerEmail?: string | null;
+  /** @nullable */
+  ownerPhone?: string | null;
+  /** @nullable */
+  ownerDob?: string | null;
+  /** @nullable */
+  kycType?: string | null;
+  /** @nullable */
+  kycNumber?: string | null;
   rating?: number;
 });
 
