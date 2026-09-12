@@ -1,1 +1,0 @@
-- [Generated Zod compatibility](zod-codegen-compatibility.md) — Keep OpenAPI primitives compatible with the workspace's Zod 3 codegen target.

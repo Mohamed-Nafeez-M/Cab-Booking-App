@@ -21,4 +21,30 @@ export interface RegisterInput {
      * @minLength 4
      */
   aadharId?: string;
+  /** Company name for provider. */
+  companyName?: string;
+  /** Unique company registration number. */
+  companyRegistrationNumber?: string;
+  /** 15-character GST identification number. */
+  gstNumber?: string;
+  /** Registered company address. */
+  companyAddress?: string;
+  /** Company city. */
+  city?: string;
+  /** Company state. */
+  state?: string;
+  /** 6-digit postal pincode. */
+  pincode?: string;
+  /** Owner full name. */
+  ownerName?: string;
+  /** Owner email address. */
+  ownerEmail?: string;
+  /** Owner phone number. */
+  ownerPhone?: string;
+  /** Owner date of birth. */
+  ownerDob?: string;
+  /** KYC ID type (Aadhaar, PAN, Other). */
+  kycType?: string;
+  /** KYC ID number. */
+  kycNumber?: string;
 }

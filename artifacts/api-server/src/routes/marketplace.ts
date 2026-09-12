@@ -150,6 +150,63 @@ router.post("/auth/register", async (req, res) => {
     if (input.role === "CUSTOMER" && !input.aadharId?.trim()) {
       return res.status(400).json({ error: "Aadhar ID proof is required for customer registration" });
     }
+    if (input.role === "PROVIDER") {
+      const companyName = input.companyName?.trim();
+      const regNumber = input.companyRegistrationNumber?.trim();
+      const gstNumber = input.gstNumber?.trim().toUpperCase();
+      const companyAddress = (input.companyAddress || (input as any).address)?.trim();
+      const city = input.city?.trim();
+      const state = input.state?.trim();
+      const pincode = input.pincode?.trim();
+      const ownerName = input.ownerName?.trim();
+      const ownerEmail = input.ownerEmail?.trim().toLowerCase();
+      const ownerPhone = input.ownerPhone?.trim();
+      const ownerDob = input.ownerDob?.trim();
+      const kycType = input.kycType?.trim();
+      const kycNumber = input.kycNumber?.trim();
+
+      if (!companyName) return res.status(400).json({ error: "Company name is required" });
+      if (!regNumber) return res.status(400).json({ error: "Company registration number is required" });
+      if (!gstNumber) return res.status(400).json({ error: "GST number is required" });
+      const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i;
+      if (!gstRegex.test(gstNumber)) {
+        return res.status(400).json({ error: "Invalid GST number format (must be 15-character GSTIN)" });
+      }
+      if (!companyAddress) return res.status(400).json({ error: "Company address is required" });
+      if (!city) return res.status(400).json({ error: "City is required" });
+      if (!state) return res.status(400).json({ error: "State is required" });
+      if (!pincode) return res.status(400).json({ error: "Pincode is required" });
+      if (!/^\d{6}$/.test(pincode)) {
+        return res.status(400).json({ error: "Pincode must be 6 digits" });
+      }
+
+      if (!ownerName) return res.status(400).json({ error: "Owner name is required" });
+      if (!ownerEmail) return res.status(400).json({ error: "Owner email is required" });
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail)) {
+        return res.status(400).json({ error: "Invalid owner email format" });
+      }
+      if (!ownerPhone) return res.status(400).json({ error: "Owner phone number is required" });
+      if (!/^\+?[0-9\s-]{8,15}$/.test(ownerPhone)) {
+        return res.status(400).json({ error: "Invalid owner phone format" });
+      }
+      if (!ownerDob) return res.status(400).json({ error: "Owner date of birth is required" });
+
+      if (!kycType) return res.status(400).json({ error: "KYC ID type is required" });
+      if (!kycNumber) return res.status(400).json({ error: "KYC ID number is required" });
+
+      if (kycType === "Aadhaar" && !/^\d{4}\s?\d{4}\s?\d{4}$/.test(kycNumber) && !/^\d{12}$/.test(kycNumber)) {
+        return res.status(400).json({ error: "Aadhaar ID must be 12 digits" });
+      }
+      if (kycType === "PAN" && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(kycNumber)) {
+        return res.status(400).json({ error: "PAN ID must be in valid format (e.g. ABCDE1234F)" });
+      }
+
+      const existingCompany = await db.select().from(providers).where(eq(providers.companyRegistrationNumber, regNumber)).limit(1);
+      if (existingCompany[0]) {
+        return res.status(409).json({ error: "Company Registration Number already registered" });
+      }
+    }
+
     const existing = await db.select().from(users).where(eq(users.email, input.email.toLowerCase())).limit(1);
     if (existing[0]) return res.status(409).json({ error: "An account with that email already exists" });
     const userId = id();
@@ -157,7 +214,25 @@ router.post("/auth/register", async (req, res) => {
     await db.transaction(async (tx) => {
       await tx.insert(users).values({ id: userId, name: input.name, email: input.email.toLowerCase(), phone: input.phone, passwordHash, role: input.role });
       if (input.role === "CUSTOMER") await tx.insert(customers).values({ id: id(), userId, aadharId: input.aadharId });
-      if (input.role === "PROVIDER") await tx.insert(providers).values({ id: id(), userId, companyName: `${input.name} Travels` });
+      if (input.role === "PROVIDER") {
+        await tx.insert(providers).values({
+          id: id(),
+          userId,
+          companyName: input.companyName?.trim() || `${input.name} Travels`,
+          companyRegistrationNumber: input.companyRegistrationNumber?.trim(),
+          gstNumber: input.gstNumber?.trim().toUpperCase(),
+          address: (input.companyAddress || (input as any).address)?.trim(),
+          city: input.city?.trim(),
+          state: input.state?.trim(),
+          pincode: input.pincode?.trim(),
+          ownerName: input.ownerName?.trim(),
+          ownerEmail: input.ownerEmail?.trim().toLowerCase(),
+          ownerPhone: input.ownerPhone?.trim(),
+          ownerDob: input.ownerDob?.trim(),
+          kycType: input.kycType?.trim(),
+          kycNumber: input.kycNumber?.trim(),
+        });
+      }
     });
     const created = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
     if (!created) return res.status(500).json({ error: "Unable to create account" });
@@ -212,7 +287,25 @@ router.get("/profiles/provider", requireAuth, requireRole("PROVIDER"), async (re
   const user = (await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1))[0];
   const profile = await providerForUser(req.user!.id);
   if (!user || !profile) return res.status(404).json({ error: "Provider profile not found" });
-  res.json({ ...publicUser(user), providerId: profile.id, companyName: profile.companyName, description: profile.description, address: profile.address, rating: 4.8 });
+  res.json({
+    ...publicUser(user),
+    providerId: profile.id,
+    companyName: profile.companyName,
+    companyRegistrationNumber: profile.companyRegistrationNumber,
+    gstNumber: profile.gstNumber,
+    description: profile.description,
+    address: profile.address,
+    city: profile.city,
+    state: profile.state,
+    pincode: profile.pincode,
+    ownerName: profile.ownerName,
+    ownerEmail: profile.ownerEmail,
+    ownerPhone: profile.ownerPhone,
+    ownerDob: profile.ownerDob,
+    kycType: profile.kycType,
+    kycNumber: profile.kycNumber,
+    rating: 4.8,
+  });
 });
 
 router.put("/profiles/provider", requireAuth, requireRole("PROVIDER"), async (req, res) => {

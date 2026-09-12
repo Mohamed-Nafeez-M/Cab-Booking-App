@@ -39,7 +39,8 @@
         "./src/*"
       ]
     },
-    "strict": false
+    "strict": false,
+    "incremental": true
   },
   "references": [
     {

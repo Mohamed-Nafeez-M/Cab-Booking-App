@@ -149,9 +149,656 @@ function QuoteRequestForm({ listing, onDone }: { listing: Listing; onDone: () =>
 }
 
 export function AuthPage({ mode }: { mode: 'login' | 'register' }) {
-  const [, setLocation] = useLocation(); const login = useLogin(); const register = useRegister(); const [role, setRole] = useState<'CUSTOMER' | 'PROVIDER'>('CUSTOMER'); const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', aadharId: '' }); const busy = login.isPending || register.isPending;
-  const submit = (e: FormEvent) => { e.preventDefault(); if (mode === 'login') login.mutate({ data: { email: form.email, password: form.password } }, { onSuccess: (res) => { setToken(res.token); setLocation(res.user.role === 'PROVIDER' ? '/provider/dashboard' : res.user.role === 'ADMIN' ? '/admin/dashboard' : '/customer/dashboard'); } }); else register.mutate({ data: { ...form, role, ...(role === 'PROVIDER' ? { aadharId: undefined } : {}) } }, { onSuccess: (res) => { setToken(res.token); setLocation(role === 'PROVIDER' ? '/provider/dashboard' : '/customer/dashboard'); } }); };
-  return <div className="grid min-h-[100dvh] lg:grid-cols-[.85fr_1.15fr]"><div className="hidden bg-sidebar p-12 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between"><Logo light /><div><div className="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground"><Compass size={25} /></div><h1 className="max-w-md font-display text-5xl font-bold leading-[1.05]">Good journeys<br /><span className="text-primary">start local.</span></h1><p className="mt-6 max-w-sm text-sm leading-6 text-sidebar-foreground/60">One place for trusted cabs, honest quotes, and the people who keep India moving.</p></div><p className="text-xs text-sidebar-foreground/45">SafarSetu · Local mobility, connected.</p></div><div className="flex items-center justify-center px-5 py-10 sm:px-12"><div className="w-full max-w-md"><Link href="/" className="mb-12 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" data-testid="link-auth-home"><ChevronLeft size={16} /> Back to home</Link><div className="mb-8"><p className="text-xs font-bold uppercase tracking-[.16em] text-primary">{mode === 'login' ? 'Welcome back' : 'Get moving'}</p><h2 className="mt-2 font-display text-4xl font-bold tracking-tight">{mode === 'login' ? 'Sign in to SafarSetu' : 'Create your account'}</h2><p className="mt-3 text-sm text-muted-foreground">{mode === 'login' ? 'Your next ride is closer than you think.' : 'Choose how you’ll use the marketplace.'}</p></div>{mode === 'register' && <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1.5"><button type="button" onClick={() => setRole('CUSTOMER')} className={cx('rounded-xl py-3 text-sm font-semibold', role === 'CUSTOMER' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')} data-testid="button-role-customer"><UserRound size={16} className="mr-1 inline" /> I need a ride</button><button type="button" onClick={() => setRole('PROVIDER')} className={cx('rounded-xl py-3 text-sm font-semibold', role === 'PROVIDER' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')} data-testid="button-role-provider"><BriefcaseBusiness size={16} className="mr-1 inline" /> I provide rides</button></div>}<form onSubmit={submit} className="grid gap-4">{mode === 'register' && <Field label="Full name" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="input-name" />}{mode === 'register' && <Field label="Phone number" required value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} data-testid="input-phone" />}{<Field label="Email address" type="email" required value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} data-testid="input-email" />}{mode === 'register' && role === 'CUSTOMER' && <Field label="Aadhar ID (KYC)" required minLength={4} value={form.aadharId} onChange={(e) => setForm({ ...form, aadharId: e.target.value })} placeholder="XXXX XXXX XXXX" data-testid="input-aadhar" />}<Field label="Password" type="password" required minLength={mode === 'register' ? 6 : 1} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} data-testid="input-password" /><Button type="submit" className="mt-2 h-12" disabled={busy} data-testid="button-auth-submit">{busy ? <Loader2 className="animate-spin" size={17} /> : mode === 'login' ? <LogIn size={17} /> : <ArrowRight size={17} />}{mode === 'login' ? 'Sign in' : 'Create account'}</Button>{(login.isError || register.isError) && <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">That didn’t work. Check your details and try again.</div>}</form><p className="mt-8 text-center text-sm text-muted-foreground">{mode === 'login' ? 'New to SafarSetu?' : 'Already have an account?'} <Link href={mode === 'login' ? '/register' : '/login'} className="font-semibold text-primary hover:underline" data-testid="link-auth-switch">{mode === 'login' ? 'Create one' : 'Sign in'}</Link></p></div></div></div>;
+  const [, setLocation] = useLocation();
+  const login = useLogin();
+  const register = useRegister();
+  const [role, setRole] = useState<'CUSTOMER' | 'PROVIDER'>('CUSTOMER');
+  const [form, setForm] = useState({ name: '', email: '', phone: '', password: '', aadharId: '' });
+
+  // Provider registration state
+  const [providerStep, setProviderStep] = useState<number>(1);
+  const [providerForm, setProviderForm] = useState({
+    companyName: '',
+    companyRegistrationNumber: '',
+    gstNumber: '',
+    companyAddress: '',
+    city: '',
+    state: '',
+    pincode: '',
+    ownerName: '',
+    ownerEmail: '',
+    ownerPhone: '',
+    ownerDob: '',
+    kycType: '',
+    kycNumber: '',
+  });
+
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submittedSuccess, setSubmittedSuccess] = useState(false);
+  const [serverError, setServerError] = useState('');
+
+  const busy = login.isPending || register.isPending;
+
+  const validateBasic = () => {
+    const errs: Record<string, string> = {};
+    if (!form.name.trim()) errs.name = 'Full name is required';
+    if (!form.phone.trim()) errs.phone = 'Phone number is required';
+    else if (!/^\+?[0-9\s-]{8,15}$/.test(form.phone.trim())) errs.phone = 'Valid phone number is required';
+    if (!form.email.trim()) errs.email = 'Email address is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) errs.email = 'Valid email address is required';
+    if (!form.password || form.password.length < 6) errs.password = 'Password must be at least 6 characters';
+    return errs;
+  };
+
+  const validateCompany = () => {
+    const errs: Record<string, string> = {};
+    if (!providerForm.companyName.trim()) errs.companyName = 'Company name is required';
+    if (!providerForm.companyRegistrationNumber.trim()) errs.companyRegistrationNumber = 'Company registration number is required';
+    if (!providerForm.gstNumber.trim()) errs.gstNumber = 'GST number is required';
+    else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/i.test(providerForm.gstNumber.trim())) {
+      errs.gstNumber = 'Invalid GST format (must be 15-character GSTIN, e.g. 22AAAAA0000A1Z5)';
+    }
+    if (!providerForm.companyAddress.trim()) errs.companyAddress = 'Company address is required';
+    if (!providerForm.city.trim()) errs.city = 'City is required';
+    if (!providerForm.state.trim()) errs.state = 'State is required';
+    if (!providerForm.pincode.trim()) errs.pincode = 'Pincode is required';
+    else if (!/^\d{6}$/.test(providerForm.pincode.trim())) errs.pincode = 'Pincode must be 6 digits';
+    return errs;
+  };
+
+  const validateOwner = () => {
+    const errs: Record<string, string> = {};
+    if (!providerForm.ownerName.trim()) errs.ownerName = 'Owner name is required';
+    if (!providerForm.ownerEmail.trim()) errs.ownerEmail = 'Owner email is required';
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(providerForm.ownerEmail.trim())) errs.ownerEmail = 'Invalid email format';
+    if (!providerForm.ownerPhone.trim()) errs.ownerPhone = 'Owner phone number is required';
+    else if (!/^\+?[0-9\s-]{8,15}$/.test(providerForm.ownerPhone.trim())) errs.ownerPhone = 'Invalid phone format';
+    if (!providerForm.ownerDob.trim()) errs.ownerDob = 'Owner date of birth is required';
+    return errs;
+  };
+
+  const validateKYC = () => {
+    const errs: Record<string, string> = {};
+    if (!providerForm.kycType.trim()) errs.kycType = 'KYC ID type is required';
+    if (!providerForm.kycNumber.trim()) errs.kycNumber = 'KYC ID number is required';
+    else if (providerForm.kycType === 'Aadhaar' && !(/^\d{4}\s?\d{4}\s?\d{4}$/.test(providerForm.kycNumber.trim()) || /^\d{12}$/.test(providerForm.kycNumber.trim()))) {
+      errs.kycNumber = 'Aadhaar number must be 12 digits';
+    } else if (providerForm.kycType === 'PAN' && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i.test(providerForm.kycNumber.trim())) {
+      errs.kycNumber = 'PAN must be in valid format (e.g. ABCDE1234F)';
+    }
+    return errs;
+  };
+
+  const handleNextStep = (currentStep: number) => {
+    setServerError('');
+    if (currentStep === 1) {
+      const errs = validateBasic();
+      if (Object.keys(errs).length > 0) {
+        setErrors(errs);
+        return;
+      }
+      setErrors({});
+      setProviderForm((prev) => ({
+        ...prev,
+        ownerName: prev.ownerName || form.name,
+        ownerEmail: prev.ownerEmail || form.email,
+        ownerPhone: prev.ownerPhone || form.phone,
+      }));
+      setProviderStep(2);
+    } else if (currentStep === 2) {
+      const errs = validateCompany();
+      if (Object.keys(errs).length > 0) {
+        setErrors(errs);
+        return;
+      }
+      setErrors({});
+      setProviderStep(3);
+    } else if (currentStep === 3) {
+      const errs = validateOwner();
+      if (Object.keys(errs).length > 0) {
+        setErrors(errs);
+        return;
+      }
+      setErrors({});
+      setProviderStep(4);
+    }
+  };
+
+  const handleProviderSubmit = (e: FormEvent) => {
+    e.preventDefault();
+    setServerError('');
+    const basicErrs = validateBasic();
+    const compErrs = validateCompany();
+    const ownerErrs = validateOwner();
+    const kycErrs = validateKYC();
+    const allErrs = { ...basicErrs, ...compErrs, ...ownerErrs, ...kycErrs };
+    if (Object.keys(allErrs).length > 0) {
+      setErrors(allErrs);
+      if (Object.keys(basicErrs).length > 0) setProviderStep(1);
+      else if (Object.keys(compErrs).length > 0) setProviderStep(2);
+      else if (Object.keys(ownerErrs).length > 0) setProviderStep(3);
+      else setProviderStep(4);
+      return;
+    }
+    setErrors({});
+    register.mutate(
+      {
+        data: {
+          name: form.name,
+          email: form.email,
+          phone: form.phone,
+          password: form.password,
+          role: 'PROVIDER',
+          companyName: providerForm.companyName,
+          companyRegistrationNumber: providerForm.companyRegistrationNumber,
+          gstNumber: providerForm.gstNumber,
+          companyAddress: providerForm.companyAddress,
+          city: providerForm.city,
+          state: providerForm.state,
+          pincode: providerForm.pincode,
+          ownerName: providerForm.ownerName,
+          ownerEmail: providerForm.ownerEmail,
+          ownerPhone: providerForm.ownerPhone,
+          ownerDob: providerForm.ownerDob,
+          kycType: providerForm.kycType,
+          kycNumber: providerForm.kycNumber,
+        },
+      },
+      {
+        onSuccess: (res) => {
+          setToken(res.token);
+          setSubmittedSuccess(true);
+        },
+        onError: (err: any) => {
+          setServerError(err?.message || 'That didn’t work. Check your details and try again.');
+        },
+      }
+    );
+  };
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    if (mode === 'login') {
+      login.mutate(
+        { data: { email: form.email, password: form.password } },
+        {
+          onSuccess: (res) => {
+            setToken(res.token);
+            setLocation(res.user.role === 'PROVIDER' ? '/provider/dashboard' : res.user.role === 'ADMIN' ? '/admin/dashboard' : '/customer/dashboard');
+          },
+        }
+      );
+    } else {
+      register.mutate(
+        { data: { ...form, role: 'CUSTOMER' } },
+        {
+          onSuccess: (res) => {
+            setToken(res.token);
+            setLocation('/customer/dashboard');
+          },
+        }
+      );
+    }
+  };
+
+  return (
+    <div className="grid min-h-[100dvh] lg:grid-cols-[.85fr_1.15fr]">
+      <div className="hidden bg-sidebar p-12 text-sidebar-foreground lg:flex lg:flex-col lg:justify-between">
+        <Logo light />
+        <div>
+          <div className="mb-6 grid h-14 w-14 place-items-center rounded-2xl bg-primary text-primary-foreground">
+            <Compass size={25} />
+          </div>
+          <h1 className="max-w-md font-display text-5xl font-bold leading-[1.05]">
+            Good journeys<br /><span className="text-primary">start local.</span>
+          </h1>
+          <p className="mt-6 max-w-sm text-sm leading-6 text-sidebar-foreground/60">
+            One place for trusted cabs, honest quotes, and the people who keep India moving.
+          </p>
+        </div>
+        <p className="text-xs text-sidebar-foreground/45">SafarSetu · Local mobility, connected.</p>
+      </div>
+      <div className="flex items-center justify-center px-5 py-10 sm:px-12">
+        <div className="w-full max-w-md">
+          <Link href="/" className="mb-8 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" data-testid="link-auth-home">
+            <ChevronLeft size={16} /> Back to home
+          </Link>
+          <div className="mb-8">
+            <p className="text-xs font-bold uppercase tracking-[.16em] text-primary">{mode === 'login' ? 'Welcome back' : 'Get moving'}</p>
+            <h2 className="mt-2 font-display text-4xl font-bold tracking-tight">
+              {mode === 'login' ? 'Sign in to SafarSetu' : role === 'PROVIDER' ? 'Cab Provider Registration' : 'Create your account'}
+            </h2>
+            <p className="mt-3 text-sm text-muted-foreground">
+              {mode === 'login'
+                ? 'Your next ride is closer than you think.'
+                : role === 'PROVIDER'
+                ? 'Register your company, owner, and KYC details to start offering rides.'
+                : 'Choose how you’ll use the marketplace.'}
+            </p>
+          </div>
+
+          {mode === 'register' && (
+            <div className="mb-6 grid grid-cols-2 gap-2 rounded-2xl bg-muted p-1.5">
+              <button
+                type="button"
+                onClick={() => { setRole('CUSTOMER'); setErrors({}); setServerError(''); }}
+                className={cx('rounded-xl py-3 text-sm font-semibold', role === 'CUSTOMER' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}
+                data-testid="button-role-customer"
+              >
+                <UserRound size={16} className="mr-1 inline" /> I need a ride
+              </button>
+              <button
+                type="button"
+                onClick={() => { setRole('PROVIDER'); setErrors({}); setServerError(''); }}
+                className={cx('rounded-xl py-3 text-sm font-semibold', role === 'PROVIDER' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground')}
+                data-testid="button-role-provider"
+              >
+                <BriefcaseBusiness size={16} className="mr-1 inline" /> I provide rides
+              </button>
+            </div>
+          )}
+
+          {mode === 'login' ? (
+            <form onSubmit={submit} className="grid gap-4">
+              <Field
+                label="Email address"
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                data-testid="input-email"
+              />
+              <Field
+                label="Password"
+                type="password"
+                required
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                data-testid="input-password"
+              />
+              <Button type="submit" className="mt-2 h-12" disabled={busy} data-testid="button-auth-submit">
+                {busy ? <Loader2 className="animate-spin" size={17} /> : <LogIn size={17} />} Sign in
+              </Button>
+              {login.isError && (
+                <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+                  That didn’t work. Check your details and try again.
+                </div>
+              )}
+            </form>
+          ) : role === 'CUSTOMER' ? (
+            <form onSubmit={submit} className="grid gap-4">
+              <Field
+                label="Full name"
+                required
+                value={form.name}
+                onChange={(e) => setForm({ ...form, name: e.target.value })}
+                data-testid="input-name"
+              />
+              <Field
+                label="Phone number"
+                required
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                data-testid="input-phone"
+              />
+              <Field
+                label="Email address"
+                type="email"
+                required
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                data-testid="input-email"
+              />
+              <Field
+                label="Aadhar ID (KYC)"
+                required
+                minLength={4}
+                value={form.aadharId}
+                onChange={(e) => setForm({ ...form, aadharId: e.target.value })}
+                placeholder="XXXX XXXX XXXX"
+                data-testid="input-aadhar"
+              />
+              <Field
+                label="Password"
+                type="password"
+                required
+                minLength={6}
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                data-testid="input-password"
+              />
+              <Button type="submit" className="mt-2 h-12" disabled={busy} data-testid="button-auth-submit">
+                {busy ? <Loader2 className="animate-spin" size={17} /> : <ArrowRight size={17} />} Create account
+              </Button>
+              {register.isError && (
+                <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive">
+                  That didn’t work. Check your details and try again.
+                </div>
+              )}
+            </form>
+          ) : submittedSuccess ? (
+            <div className="rounded-2xl border border-accent/30 bg-accent/5 p-8 text-center" data-testid="container-success">
+              <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-accent/20 text-accent">
+                <Check size={28} />
+              </div>
+              <h3 className="font-display text-2xl font-bold text-foreground" data-testid="text-success-message">
+                Provider registration submitted successfully
+              </h3>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Your company, owner, and KYC details have been securely recorded.
+              </p>
+              <Button
+                type="button"
+                className="mt-6 w-full h-12"
+                onClick={() => setLocation('/provider/dashboard')}
+                data-testid="button-go-dashboard"
+              >
+                Go to Provider Dashboard <ArrowRight size={17} />
+              </Button>
+            </div>
+          ) : (
+            <div>
+              {/* Stepper Tabs */}
+              <div className="mb-6 grid grid-cols-4 gap-1 rounded-xl bg-muted p-1 text-center text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setProviderStep(1)}
+                  className={cx('rounded-lg py-2 transition', providerStep === 1 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+                  data-testid="step-tab-basic"
+                >
+                  1. Basic
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProviderStep(2)}
+                  className={cx('rounded-lg py-2 transition', providerStep === 2 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+                  data-testid="step-tab-company"
+                >
+                  2. Company
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProviderStep(3)}
+                  className={cx('rounded-lg py-2 transition', providerStep === 3 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+                  data-testid="step-tab-owner"
+                >
+                  3. Owner
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProviderStep(4)}
+                  className={cx('rounded-lg py-2 transition', providerStep === 4 ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}
+                  data-testid="step-tab-kyc"
+                >
+                  4. KYC
+                </button>
+              </div>
+
+              {providerStep === 1 && (
+                <form onSubmit={(e) => { e.preventDefault(); handleNextStep(1); }} className="grid gap-4" data-testid="form-provider-basic">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="font-display text-lg font-bold" data-testid="heading-basic-details">Basic Provider Registration</h3>
+                    <span className="text-xs text-muted-foreground">Step 1 of 4</span>
+                  </div>
+                  <div>
+                    <Field
+                      label="Full name"
+                      required
+                      value={form.name}
+                      onChange={(e) => { setForm({ ...form, name: e.target.value }); setErrors((prev) => ({ ...prev, name: '' })); }}
+                      data-testid="input-name"
+                    />
+                    {errors.name && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-name">{errors.name}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Phone number"
+                      required
+                      value={form.phone}
+                      onChange={(e) => { setForm({ ...form, phone: e.target.value }); setErrors((prev) => ({ ...prev, phone: '' })); }}
+                      data-testid="input-phone"
+                    />
+                    {errors.phone && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-phone">{errors.phone}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Email address"
+                      type="email"
+                      required
+                      value={form.email}
+                      onChange={(e) => { setForm({ ...form, email: e.target.value }); setErrors((prev) => ({ ...prev, email: '' })); }}
+                      data-testid="input-email"
+                    />
+                    {errors.email && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-email">{errors.email}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Password"
+                      type="password"
+                      required
+                      minLength={6}
+                      value={form.password}
+                      onChange={(e) => { setForm({ ...form, password: e.target.value }); setErrors((prev) => ({ ...prev, password: '' })); }}
+                      data-testid="input-password"
+                    />
+                    {errors.password && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-password">{errors.password}</p>}
+                  </div>
+                  <Button type="submit" className="mt-2 h-12" data-testid="button-next-company">
+                    Next: Company Details <ArrowRight size={17} />
+                  </Button>
+                </form>
+              )}
+
+              {providerStep === 2 && (
+                <form onSubmit={(e) => { e.preventDefault(); handleNextStep(2); }} className="grid gap-4" data-testid="form-provider-company">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="font-display text-lg font-bold" data-testid="heading-company-details">Company Details</h3>
+                    <span className="text-xs text-muted-foreground">Step 2 of 4</span>
+                  </div>
+                  <div>
+                    <Field
+                      label="Company Name"
+                      required
+                      value={providerForm.companyName}
+                      onChange={(e) => { setProviderForm({ ...providerForm, companyName: e.target.value }); setErrors((prev) => ({ ...prev, companyName: '' })); }}
+                      data-testid="input-company-name"
+                    />
+                    {errors.companyName && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-company-name">{errors.companyName}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Company Registration Number"
+                      required
+                      value={providerForm.companyRegistrationNumber}
+                      onChange={(e) => { setProviderForm({ ...providerForm, companyRegistrationNumber: e.target.value }); setErrors((prev) => ({ ...prev, companyRegistrationNumber: '' })); }}
+                      data-testid="input-company-reg"
+                    />
+                    {errors.companyRegistrationNumber && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-company-reg">{errors.companyRegistrationNumber}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="GST Number"
+                      required
+                      placeholder="e.g. 22AAAAA0000A1Z5"
+                      value={providerForm.gstNumber}
+                      onChange={(e) => { setProviderForm({ ...providerForm, gstNumber: e.target.value.toUpperCase() }); setErrors((prev) => ({ ...prev, gstNumber: '' })); }}
+                      data-testid="input-company-gst"
+                    />
+                    {errors.gstNumber && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-company-gst">{errors.gstNumber}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Company Address"
+                      required
+                      value={providerForm.companyAddress}
+                      onChange={(e) => { setProviderForm({ ...providerForm, companyAddress: e.target.value }); setErrors((prev) => ({ ...prev, companyAddress: '' })); }}
+                      data-testid="input-company-address"
+                    />
+                    {errors.companyAddress && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-company-address">{errors.companyAddress}</p>}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Field
+                        label="City"
+                        required
+                        value={providerForm.city}
+                        onChange={(e) => { setProviderForm({ ...providerForm, city: e.target.value }); setErrors((prev) => ({ ...prev, city: '' })); }}
+                        data-testid="input-company-city"
+                      />
+                      {errors.city && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-company-city">{errors.city}</p>}
+                    </div>
+                    <div>
+                      <Field
+                        label="State"
+                        required
+                        value={providerForm.state}
+                        onChange={(e) => { setProviderForm({ ...providerForm, state: e.target.value }); setErrors((prev) => ({ ...prev, state: '' })); }}
+                        data-testid="input-company-state"
+                      />
+                      {errors.state && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-company-state">{errors.state}</p>}
+                    </div>
+                  </div>
+                  <div>
+                    <Field
+                      label="Pincode"
+                      required
+                      maxLength={6}
+                      placeholder="6-digit pincode"
+                      value={providerForm.pincode}
+                      onChange={(e) => { setProviderForm({ ...providerForm, pincode: e.target.value }); setErrors((prev) => ({ ...prev, pincode: '' })); }}
+                      data-testid="input-company-pincode"
+                    />
+                    {errors.pincode && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-company-pincode">{errors.pincode}</p>}
+                  </div>
+                  <div className="mt-2 flex gap-3">
+                    <Button type="button" variant="outline" className="h-12 flex-1" onClick={() => setProviderStep(1)} data-testid="button-back-step">
+                      <ChevronLeft size={16} /> Back
+                    </Button>
+                    <Button type="submit" className="h-12 flex-[2]" data-testid="button-next-owner">
+                      Next: Owner Details <ArrowRight size={17} />
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {providerStep === 3 && (
+                <form onSubmit={(e) => { e.preventDefault(); handleNextStep(3); }} className="grid gap-4" data-testid="form-provider-owner">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="font-display text-lg font-bold" data-testid="heading-owner-details">Owner Details</h3>
+                    <span className="text-xs text-muted-foreground">Step 3 of 4</span>
+                  </div>
+                  <div>
+                    <Field
+                      label="Owner Full Name"
+                      required
+                      value={providerForm.ownerName}
+                      onChange={(e) => { setProviderForm({ ...providerForm, ownerName: e.target.value }); setErrors((prev) => ({ ...prev, ownerName: '' })); }}
+                      data-testid="input-owner-name"
+                    />
+                    {errors.ownerName && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-owner-name">{errors.ownerName}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Owner Email"
+                      type="email"
+                      required
+                      value={providerForm.ownerEmail}
+                      onChange={(e) => { setProviderForm({ ...providerForm, ownerEmail: e.target.value }); setErrors((prev) => ({ ...prev, ownerEmail: '' })); }}
+                      data-testid="input-owner-email"
+                    />
+                    {errors.ownerEmail && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-owner-email">{errors.ownerEmail}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Owner Phone Number"
+                      required
+                      value={providerForm.ownerPhone}
+                      onChange={(e) => { setProviderForm({ ...providerForm, ownerPhone: e.target.value }); setErrors((prev) => ({ ...prev, ownerPhone: '' })); }}
+                      data-testid="input-owner-phone"
+                    />
+                    {errors.ownerPhone && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-owner-phone">{errors.ownerPhone}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="Owner Date of Birth"
+                      type="date"
+                      required
+                      value={providerForm.ownerDob}
+                      onChange={(e) => { setProviderForm({ ...providerForm, ownerDob: e.target.value }); setErrors((prev) => ({ ...prev, ownerDob: '' })); }}
+                      data-testid="input-owner-dob"
+                    />
+                    {errors.ownerDob && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-owner-dob">{errors.ownerDob}</p>}
+                  </div>
+                  <div className="mt-2 flex gap-3">
+                    <Button type="button" variant="outline" className="h-12 flex-1" onClick={() => setProviderStep(2)} data-testid="button-back-step">
+                      <ChevronLeft size={16} /> Back
+                    </Button>
+                    <Button type="submit" className="h-12 flex-[2]" data-testid="button-next-kyc">
+                      Next: KYC Details <ArrowRight size={17} />
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {providerStep === 4 && (
+                <form onSubmit={handleProviderSubmit} className="grid gap-4" data-testid="form-provider-kyc">
+                  <div className="flex items-center justify-between border-b border-border pb-2">
+                    <h3 className="font-display text-lg font-bold" data-testid="heading-kyc-details">KYC Details</h3>
+                    <span className="text-xs text-muted-foreground">Step 4 of 4</span>
+                  </div>
+                  <div>
+                    <label className="grid gap-1.5 text-sm font-medium text-foreground">
+                      <span>KYC ID Type</span>
+                      <select
+                        className="h-11 rounded-xl border border-input bg-card px-3.5 text-sm shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/15"
+                        value={providerForm.kycType}
+                        onChange={(e) => { setProviderForm({ ...providerForm, kycType: e.target.value }); setErrors((prev) => ({ ...prev, kycType: '' })); }}
+                        data-testid="select-kyc-type"
+                      >
+                        <option value="">Select KYC ID Type</option>
+                        <option value="Aadhaar">Aadhaar</option>
+                        <option value="PAN">PAN</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </label>
+                    {errors.kycType && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-kyc-type">{errors.kycType}</p>}
+                  </div>
+                  <div>
+                    <Field
+                      label="KYC ID Number"
+                      required
+                      placeholder={providerForm.kycType === 'Aadhaar' ? '12-digit Aadhaar number' : providerForm.kycType === 'PAN' ? '10-character PAN (e.g. ABCDE1234F)' : 'Enter KYC ID number'}
+                      value={providerForm.kycNumber}
+                      onChange={(e) => { setProviderForm({ ...providerForm, kycNumber: e.target.value }); setErrors((prev) => ({ ...prev, kycNumber: '' })); }}
+                      data-testid="input-kyc-number"
+                    />
+                    {errors.kycNumber && <p className="mt-1 text-xs text-destructive font-medium" data-testid="error-kyc-number">{errors.kycNumber}</p>}
+                  </div>
+                  {serverError && (
+                    <div className="rounded-xl bg-destructive/10 p-3 text-sm text-destructive" data-testid="form-error">
+                      {serverError}
+                    </div>
+                  )}
+                  <div className="mt-2 flex gap-3">
+                    <Button type="button" variant="outline" className="h-12 flex-1" onClick={() => setProviderStep(3)} data-testid="button-back-step">
+                      <ChevronLeft size={16} /> Back
+                    </Button>
+                    <Button type="submit" className="h-12 flex-[2]" disabled={busy} data-testid="button-auth-submit">
+                      {busy ? <Loader2 className="animate-spin" size={17} /> : <Check size={17} />} Complete Registration
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
+          )}
+
+          <p className="mt-8 text-center text-sm text-muted-foreground">
+            {mode === 'login' ? 'New to SafarSetu?' : 'Already have an account?'} <Link href={mode === 'login' ? '/register' : '/login'} className="font-semibold text-primary hover:underline" data-testid="link-auth-switch">{mode === 'login' ? 'Create one' : 'Sign in'}</Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function ProtectedSkeleton() {
