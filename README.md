@@ -2,51 +2,122 @@
 
 A local-first cab service marketplace MVP for connecting customers with cab and vehicle providers across Indian routes. Customers can search listings, request quotes, compare responses, and accept a provider. Providers can manage vehicles, drivers, listings, and incoming leads. Admins can review platform totals and user accounts.
 
-## Run locally
+---
 
-This workspace uses the Replit-provided PostgreSQL database for local development.
+## 🚀 Quick Start (Local & Windows Setup)
+
+### Prerequisites
+
+- **Node.js** (v18+) & **pnpm** (v9+)
+- **PostgreSQL** (running locally via Docker or native PostgreSQL installation)
+
+---
+
+### Step 1: Install Dependencies
 
 ```bash
 pnpm install
+```
+
+---
+
+### Step 2: Start PostgreSQL Database
+
+#### Option A: Using Docker (Recommended)
+
+Run a local PostgreSQL container in PowerShell or Terminal:
+
+```powershell
+docker run -d `
+  --name cab-postgres `
+  -e POSTGRES_USER=postgres `
+  -e POSTGRES_PASSWORD=postgres `
+  -e POSTGRES_DB=cab_marketplace `
+  -p 5432:5432 `
+  postgres:16-alpine
+```
+
+#### Option B: Using Local PostgreSQL
+
+Ensure PostgreSQL is running locally on port `5432` with a database named `cab_marketplace`.
+
+---
+
+### Step 3: Set Environment Variables & Provision Database
+
+#### On Windows (PowerShell):
+
+```powershell
+# Set database connection string
+$env:DATABASE_URL="postgres://postgres:postgres@localhost:5432/cab_marketplace"
+
+# Push database schema
+pnpm --filter @workspace/db run push
+
+# Seed initial data (demo accounts, listings, vehicles)
+pnpm --filter @workspace/api-server run seed
+```
+
+#### On Linux / macOS / Git Bash:
+
+```bash
+export DATABASE_URL="postgres://postgres:postgres@localhost:5432/cab_marketplace"
+
 pnpm --filter @workspace/db run push
 pnpm --filter @workspace/api-server run seed
 ```
 
-The managed workflows start the services automatically:
+---
 
-- Web app: the project preview
-- API: `/api`
+### Step 4: Run the Application
 
-To run the same services manually:
+You will need **two terminal windows**:
 
-```bash
-PORT=4000 pnpm --filter @workspace/api-server run dev
-PORT=3000 BASE_PATH=/ pnpm --filter @workspace/cab-marketplace run dev
-```
+#### Terminal 1: Backend API Server (Port 4000)
 
-The app uses the workspace's Vite + Express + Drizzle runtime so the complete MVP can run in one local monorepo. The data model is relational and keeps geographic search fields modular for a future PostGIS migration.
+- **PowerShell (Windows):**
+  ```powershell
+  $env:DATABASE_URL="postgres://postgres:postgres@localhost:5432/cab_marketplace"; $env:PORT=4000; pnpm --filter @workspace/api-server run dev
+  ```
+- **Linux / macOS:**
+  ```bash
+  DATABASE_URL="postgres://postgres:postgres@localhost:5432/cab_marketplace" PORT=4000 pnpm --filter @workspace/api-server run dev
+  ```
 
-## Demo accounts
+#### Terminal 2: Frontend Web App (Port 3000)
 
-All seeded accounts use:
+- **PowerShell (Windows):**
+  ```powershell
+  $env:PORT=3000; $env:BASE_PATH="/"; pnpm --filter @workspace/cab-marketplace run dev
+  ```
+- **Linux / macOS:**
+  ```bash
+  PORT=3000 BASE_PATH=/ pnpm --filter @workspace/cab-marketplace run dev
+  ```
 
-```text
-Password: CabMVP123!
-```
+Once running, navigate to **`http://localhost:3000`** in your browser.
 
-| Role | Email |
-| --- | --- |
-| Admin | admin@cabmarket.local |
-| Customer | arjun@cabmarket.local |
-| Customer | meera@cabmarket.local |
-| Customer | rohan@cabmarket.local |
-| Provider | karthik@cabmarket.local |
-| Provider | suresh@cabmarket.local |
-| Provider | coastal@cabmarket.local |
-| Provider | southern@cabmarket.local |
-| Provider | greenline@cabmarket.local |
+---
 
-## API surface
+## 🔑 Demo Accounts
+
+All seeded accounts use password: **`CabMVP123!`**
+
+| Role | Email | Description |
+| --- | --- | --- |
+| **Admin** | `admin@cabmarket.local` | Overview totals & user management |
+| **Customer** | `arjun@cabmarket.local` | Search listings & request quotes |
+| **Customer** | `meera@cabmarket.local` | Active quote comparison |
+| **Customer** | `rohan@cabmarket.local` | Customer profile |
+| **Provider** | `karthik@cabmarket.local` | Vehicle & driver fleet owner |
+| **Provider** | `suresh@cabmarket.local` | Active quote responses |
+| **Provider** | `coastal@cabmarket.local` | Intercity routes provider |
+| **Provider** | `southern@cabmarket.local` | Regional cab agency |
+| **Provider** | `greenline@cabmarket.local` | Fleet operator |
+
+---
+
+## ⚙️ API Surface
 
 - `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/auth/me`
 - Customer/provider profile read and update
@@ -58,12 +129,19 @@ Password: CabMVP123!
 - Customer ratings for accepted quotations
 - Protected admin overview and user list
 
-Authentication is password-based for this local MVP. Passwords are hashed with bcryptjs and sessions are signed with a JWT secret from `JWT_SECRET` or the provided local session secret fallback.
+Authentication is password-based for this local MVP. Passwords are hashed with `bcryptjs` and sessions are signed with a JWT secret from `JWT_SECRET` (defaults to local fallback).
 
-## Useful checks
+---
+
+## 🧪 Useful Commands
 
 ```bash
+# Typecheck entire monorepo
 pnpm run typecheck
+
+# Typecheck API server
 pnpm --filter @workspace/api-server run typecheck
+
+# Typecheck Frontend
 pnpm --filter @workspace/cab-marketplace run typecheck
 ```

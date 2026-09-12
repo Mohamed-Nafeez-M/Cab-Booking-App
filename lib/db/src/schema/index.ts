@@ -33,6 +33,7 @@ export const customers = pgTable("customers", {
   userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   preferences: text("preferences"),
   city: text("city"),
+  aadharId: text("aadhar_id"),
   ...timestamps,
 }, (table) => [index("customers_user_idx").on(table.userId)]);
 
@@ -63,6 +64,7 @@ export const drivers = pgTable("drivers", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   licenseNumber: text("license_number").notNull(),
+  aadharId: text("aadhar_id").notNull(),
   ...timestamps,
 }, (table) => [index("drivers_provider_idx").on(table.providerId)]);
 

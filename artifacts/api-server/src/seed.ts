@@ -19,9 +19,9 @@ const usersSeed = [
 ];
 
 const customersSeed = [
-  { id: "customer-1", userId: "user-customer-1", city: "Chennai", preferences: "AC, luggage space" },
-  { id: "customer-2", userId: "user-customer-2", city: "Bangalore", preferences: "Child seat" },
-  { id: "customer-3", userId: "user-customer-3", city: "Coimbatore", preferences: "Early morning pickup" },
+  { id: "customer-1", userId: "user-customer-1", city: "Chennai", preferences: "AC, luggage space", aadharId: "4512 3344 5566" },
+  { id: "customer-2", userId: "user-customer-2", city: "Bangalore", preferences: "Child seat", aadharId: "5623 4455 6677" },
+  { id: "customer-3", userId: "user-customer-3", city: "Coimbatore", preferences: "Early morning pickup", aadharId: "6734 5566 7788" },
 ];
 
 const providersSeed = [
@@ -70,9 +70,9 @@ for (const row of listingsSeed) await db.insert(listings).values(row).onConflict
 for (const row of leadsSeed) await db.insert(leads).values(row).onConflictDoNothing();
 for (const row of quotationsSeed) await db.insert(quotations).values(row).onConflictDoNothing();
 for (const row of [
-  { id: "driver-1", providerId: "provider-1", name: "Prakash Kumar", phone: "+91 90000 10101", licenseNumber: "TN01-DRV-1001" },
-  { id: "driver-2", providerId: "provider-2", name: "Vijay Anand", phone: "+91 90000 10102", licenseNumber: "KA05-DRV-1002" },
-  { id: "driver-3", providerId: "provider-3", name: "Nikhil Joseph", phone: "+91 90000 10103", licenseNumber: "KL07-DRV-1003" },
+  { id: "driver-1", providerId: "provider-1", name: "Prakash Kumar", phone: "+91 90000 10101", licenseNumber: "TN01-DRV-1001", aadharId: "7845 1122 3344" },
+  { id: "driver-2", providerId: "provider-2", name: "Vijay Anand", phone: "+91 90000 10102", licenseNumber: "KA05-DRV-1002", aadharId: "8956 2233 4455" },
+  { id: "driver-3", providerId: "provider-3", name: "Nikhil Joseph", phone: "+91 90000 10103", licenseNumber: "KL07-DRV-1003", aadharId: "9067 3344 5566" },
 ]) await db.insert(drivers).values(row).onConflictDoNothing();
 
 console.info("Cab Marketplace seed complete.");

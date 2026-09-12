@@ -594,6 +594,10 @@ components:
         role:
           type: string
           enum: [CUSTOMER, PROVIDER]
+        aadharId:
+          type: string
+          minLength: 4
+          description: Aadhar/KYC ID proof. Required when role is CUSTOMER.
     LoginInput:
       type: object
       required: [email, password]
@@ -613,6 +617,7 @@ components:
           properties:
             preferences: { type: ["string", "null"] }
             city: { type: ["string", "null"] }
+            aadharId: { type: ["string", "null"] }
     CustomerProfileInput:
       type: object
       properties:
@@ -620,6 +625,7 @@ components:
         phone: { type: string, minLength: 8 }
         preferences: { type: string }
         city: { type: string }
+        aadharId: { type: string, minLength: 4 }
     ProviderProfile:
       allOf:
         - $ref: "#/components/schemas/User"
@@ -679,20 +685,22 @@ components:
         - $ref: "#/components/schemas/VehicleInput"
     Driver:
       type: object
-      required: [id, providerId, name, phone, licenseNumber]
+      required: [id, providerId, name, phone, licenseNumber, aadharId]
       properties:
         id: { type: string }
         providerId: { type: string }
         name: { type: string }
         phone: { type: string }
         licenseNumber: { type: string }
+        aadharId: { type: string }
     DriverInput:
       type: object
-      required: [name, phone, licenseNumber]
+      required: [name, phone, licenseNumber, aadharId]
       properties:
         name: { type: string }
         phone: { type: string }
         licenseNumber: { type: string }
+        aadharId: { type: string, minLength: 4 }
     DriverUpdate:
       allOf:
         - $ref: "#/components/schemas/DriverInput"

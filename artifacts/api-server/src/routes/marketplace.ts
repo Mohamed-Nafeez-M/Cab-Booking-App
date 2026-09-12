@@ -72,7 +72,11 @@ async function listingRows(filters: {
     .innerJoin(providers, eq(listings.providerId, providers.id))
     .innerJoin(users, eq(providers.userId, users.id))
     .where(and(...conditions))
-    .orderBy(filters.sort === "price_desc" ? desc(listings.price) : asc(listings.price));
+    .orderBy(
+      filters.sort === "price_desc" ? desc(listings.price)
+      : filters.sort === "price_asc" ? asc(listings.price)
+      : desc(listings.createdAt),
+    );
   return rows.map(({ listing, vehicle, provider, providerUser }) => ({
     id: listing.id,
     providerId: listing.providerId,
@@ -143,13 +147,16 @@ async function leadRow(leadId: string) {
 router.post("/auth/register", async (req, res) => {
   try {
     const input = RegisterBody.parse(req.body);
+    if (input.role === "CUSTOMER" && !input.aadharId?.trim()) {
+      return res.status(400).json({ error: "Aadhar ID proof is required for customer registration" });
+    }
     const existing = await db.select().from(users).where(eq(users.email, input.email.toLowerCase())).limit(1);
     if (existing[0]) return res.status(409).json({ error: "An account with that email already exists" });
     const userId = id();
     const passwordHash = await bcrypt.hash(input.password, 10);
     await db.transaction(async (tx) => {
       await tx.insert(users).values({ id: userId, name: input.name, email: input.email.toLowerCase(), phone: input.phone, passwordHash, role: input.role });
-      if (input.role === "CUSTOMER") await tx.insert(customers).values({ id: id(), userId });
+      if (input.role === "CUSTOMER") await tx.insert(customers).values({ id: id(), userId, aadharId: input.aadharId });
       if (input.role === "PROVIDER") await tx.insert(providers).values({ id: id(), userId, companyName: `${input.name} Travels` });
     });
     const created = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0];
@@ -183,7 +190,7 @@ router.get("/profiles/customer", requireAuth, requireRole("CUSTOMER"), async (re
   const user = (await db.select().from(users).where(eq(users.id, req.user!.id)).limit(1))[0];
   const profile = await customerForUser(req.user!.id);
   if (!user || !profile) return res.status(404).json({ error: "Customer profile not found" });
-  res.json({ ...publicUser(user), preferences: profile.preferences, city: profile.city });
+  res.json({ ...publicUser(user), preferences: profile.preferences, city: profile.city, aadharId: profile.aadharId });
 });
 
 router.put("/profiles/customer", requireAuth, requireRole("CUSTOMER"), async (req, res) => {
@@ -193,9 +200,9 @@ router.put("/profiles/customer", requireAuth, requireRole("CUSTOMER"), async (re
     const profile = await customerForUser(userId);
     if (!profile) return res.status(404).json({ error: "Customer profile not found" });
     await db.update(users).set({ ...(input.name ? { name: input.name } : {}), ...(input.phone ? { phone: input.phone } : {}), updatedAt: new Date() }).where(eq(users.id, userId));
-    await db.update(customers).set({ preferences: input.preferences, city: input.city, updatedAt: new Date() }).where(eq(customers.id, profile.id));
+    await db.update(customers).set({ preferences: input.preferences, city: input.city, aadharId: input.aadharId ?? profile.aadharId, updatedAt: new Date() }).where(eq(customers.id, profile.id));
     const user = (await db.select().from(users).where(eq(users.id, userId)).limit(1))[0]!;
-    res.json({ ...publicUser(user), preferences: input.preferences ?? profile.preferences, city: input.city ?? profile.city });
+    res.json({ ...publicUser(user), preferences: input.preferences ?? profile.preferences, city: input.city ?? profile.city, aadharId: input.aadharId ?? profile.aadharId });
   } catch (error) {
     res.status(400).json({ error: error instanceof Error ? error.message : "Invalid profile" });
   }
@@ -466,6 +473,10 @@ router.put("/quotations/:id", requireAuth, async (req, res) => {
     if (req.user!.role === "PROVIDER") {
       const provider = await providerForUser(req.user!.id);
       if (!provider || quote.providerId !== provider.id) return res.status(403).json({ error: "You do not have access to this quotation" });
+    } else if (req.user!.role === "CUSTOMER") {
+      const customer = await customerForUser(req.user!.id);
+      const lead = (await db.select().from(leads).where(eq(leads.id, quote.leadId)).limit(1))[0];
+      if (!customer || !lead || lead.customerId !== customer.id) return res.status(403).json({ error: "You do not have access to this quotation" });
     }
     await db.update(quotations).set({ status: input.status, updatedAt: new Date() }).where(eq(quotations.id, routeId(req.params.id)));
     if (input.status === "ACCEPTED") {

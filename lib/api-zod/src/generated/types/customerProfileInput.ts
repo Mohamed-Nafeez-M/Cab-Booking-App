@@ -13,4 +13,6 @@ export interface CustomerProfileInput {
   phone?: string;
   preferences?: string;
   city?: string;
+  /** @minLength 4 */
+  aadharId?: string;
 }

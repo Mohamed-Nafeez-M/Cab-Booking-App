@@ -48,6 +48,11 @@ export interface RegisterInput {
   /** @minLength 6 */
   password: string;
   role: RegisterInputRole;
+  /**
+     * Aadhar/KYC ID proof. Required when role is CUSTOMER.
+     * @minLength 4
+     */
+  aadharId?: string;
 }
 
 export interface LoginInput {
@@ -66,6 +71,8 @@ export type CustomerProfile = User & ({
   preferences?: string | null;
   /** @nullable */
   city?: string | null;
+  /** @nullable */
+  aadharId?: string | null;
 });
 
 export interface CustomerProfileInput {
@@ -75,6 +82,8 @@ export interface CustomerProfileInput {
   phone?: string;
   preferences?: string;
   city?: string;
+  /** @minLength 4 */
+  aadharId?: string;
 }
 
 export type ProviderProfile = User & ({
@@ -186,12 +195,15 @@ export interface Driver {
   name: string;
   phone: string;
   licenseNumber: string;
+  aadharId: string;
 }
 
 export interface DriverInput {
   name: string;
   phone: string;
   licenseNumber: string;
+  /** @minLength 4 */
+  aadharId: string;
 }
 
 export type DriverUpdate = DriverInput;

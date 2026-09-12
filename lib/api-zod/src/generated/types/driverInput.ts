@@ -10,4 +10,6 @@ export interface DriverInput {
   name: string;
   phone: string;
   licenseNumber: string;
+  /** @minLength 4 */
+  aadharId: string;
 }

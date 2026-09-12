@@ -12,4 +12,6 @@ export type CustomerProfile = User & ({
   preferences?: string | null;
   /** @nullable */
   city?: string | null;
+  /** @nullable */
+  aadharId?: string | null;
 });

@@ -25,6 +25,8 @@ export const registerBodyPhoneMin = 8;
 
 export const registerBodyPasswordMin = 6;
 
+export const registerBodyAadharIdMin = 4;
+
 
 
 export const RegisterBody = zod.object({
@@ -32,7 +34,8 @@ export const RegisterBody = zod.object({
   "email": zod.string(),
   "phone": zod.string().min(registerBodyPhoneMin),
   "password": zod.string().min(registerBodyPasswordMin),
-  "role": zod.enum(['CUSTOMER', 'PROVIDER'])
+  "role": zod.enum(['CUSTOMER', 'PROVIDER']),
+  "aadharId": zod.string().min(registerBodyAadharIdMin).optional().describe('Aadhar\/KYC ID proof. Required when role is CUSTOMER.')
 })
 
 export const RegisterResponse = zod.object({
@@ -94,7 +97,8 @@ export const GetCustomerProfileResponse = zod.object({
   "createdAt": zod.string()
 }).and(zod.object({
   "preferences": zod.string().nullish(),
-  "city": zod.string().nullish()
+  "city": zod.string().nullish(),
+  "aadharId": zod.string().nullish()
 }))
 
 
@@ -102,13 +106,16 @@ export const updateCustomerProfileBodyNameMin = 2;
 
 export const updateCustomerProfileBodyPhoneMin = 8;
 
+export const updateCustomerProfileBodyAadharIdMin = 4;
+
 
 
 export const UpdateCustomerProfileBody = zod.object({
   "name": zod.string().min(updateCustomerProfileBodyNameMin).optional(),
   "phone": zod.string().min(updateCustomerProfileBodyPhoneMin).optional(),
   "preferences": zod.string().optional(),
-  "city": zod.string().optional()
+  "city": zod.string().optional(),
+  "aadharId": zod.string().min(updateCustomerProfileBodyAadharIdMin).optional()
 })
 
 export const UpdateCustomerProfileResponse = zod.object({
@@ -120,7 +127,8 @@ export const UpdateCustomerProfileResponse = zod.object({
   "createdAt": zod.string()
 }).and(zod.object({
   "preferences": zod.string().nullish(),
-  "city": zod.string().nullish()
+  "city": zod.string().nullish(),
+  "aadharId": zod.string().nullish()
 }))
 
 
@@ -429,15 +437,21 @@ export const ListDriversResponseItem = zod.object({
   "providerId": zod.string(),
   "name": zod.string(),
   "phone": zod.string(),
-  "licenseNumber": zod.string()
+  "licenseNumber": zod.string(),
+  "aadharId": zod.string()
 })
 export const ListDriversResponse = zod.array(ListDriversResponseItem)
+
+
+export const createDriverBodyAadharIdMin = 4;
+
 
 
 export const CreateDriverBody = zod.object({
   "name": zod.string(),
   "phone": zod.string(),
-  "licenseNumber": zod.string()
+  "licenseNumber": zod.string(),
+  "aadharId": zod.string().min(createDriverBodyAadharIdMin)
 })
 
 export const CreateDriverResponse = zod.object({
@@ -445,7 +459,8 @@ export const CreateDriverResponse = zod.object({
   "providerId": zod.string(),
   "name": zod.string(),
   "phone": zod.string(),
-  "licenseNumber": zod.string()
+  "licenseNumber": zod.string(),
+  "aadharId": zod.string()
 })
 
 
@@ -453,10 +468,15 @@ export const UpdateDriverParams = zod.object({
   "id": zod.coerce.string()
 })
 
+export const updateDriverBodyOneAadharIdMin = 4;
+
+
+
 export const UpdateDriverBody = zod.object({
   "name": zod.string(),
   "phone": zod.string(),
-  "licenseNumber": zod.string()
+  "licenseNumber": zod.string(),
+  "aadharId": zod.string().min(updateDriverBodyOneAadharIdMin)
 })
 
 export const UpdateDriverResponse = zod.object({
@@ -464,7 +484,8 @@ export const UpdateDriverResponse = zod.object({
   "providerId": zod.string(),
   "name": zod.string(),
   "phone": zod.string(),
-  "licenseNumber": zod.string()
+  "licenseNumber": zod.string(),
+  "aadharId": zod.string()
 })
 
 

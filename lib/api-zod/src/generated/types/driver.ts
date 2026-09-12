@@ -12,4 +12,5 @@ export interface Driver {
   name: string;
   phone: string;
   licenseNumber: string;
+  aadharId: string;
 }

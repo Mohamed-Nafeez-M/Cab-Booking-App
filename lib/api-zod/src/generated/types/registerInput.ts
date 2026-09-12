@@ -16,4 +16,9 @@ export interface RegisterInput {
   /** @minLength 6 */
   password: string;
   role: RegisterInputRole;
+  /**
+     * Aadhar/KYC ID proof. Required when role is CUSTOMER.
+     * @minLength 4
+     */
+  aadharId?: string;
 }
